@@ -1,0 +1,17 @@
+{
+  "name": "ssb-repl",
+  "version": "1.0.0",
+  "description": "Explore json-stat datasets from Statistics Norway in a node repl",
+  "bin": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "jari.bakken@gmail.com",
+  "license": "MIT",
+  "dependencies": {
+    "debug": "^2.2.0",
+    "jsonstat-repl": "^1.0.3",
+    "node-fetch": "^1.5.1",
+    "yargs": "^4.6.0"
+  }
+}
