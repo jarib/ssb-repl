@@ -7,6 +7,22 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "jari.bakken@gmail.com",
+  "keywords": [
+    "ssb",
+    "statistics",
+    "norway",
+    "stats",
+    "json",
+    "json-stat",
+    "jsonstat",
+    "repl"
+  ],
+  "engines": {
+    "node": ">=4.1"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/"
+  },
   "license": "MIT",
   "dependencies": {
     "debug": "^2.2.0",
