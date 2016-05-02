@@ -4,16 +4,32 @@ const jsonStatRepl = require('jsonstat-repl');
 const fetch = require('node-fetch');
 const debug = require('debug')('ssb-repl');
 const argv = require('yargs')
-    .number('limit')
-    .string('_')
+    .usage('$0 <table-id> [args]')
+    .option('limit', {
+        alias: 'l',
+        describe: 'Only fetch the first N values of each variable (to reduce size)',
+        type: 'number'
+    })
+    .option('exclude-eliminiation', {
+        alias: 'ee',
+        describe: 'Ignore variables that can be eliminated (to reduce size)',
+        type: 'boolean'
+    })
+    .option('stdin', {
+        alias: 's',
+        describe: 'Read a custom JSON query from STDIN',
+        type: 'boolean'
+    })
+    .option('metadata', {
+        alias: 'm',
+        describe: 'Only print metadata from the given table',
+        type: 'boolean'
+    })
+    .string('_').demand(1)
+    .help('help')
     .argv;
 
 const tableId = argv._[0];
-
-if (!tableId) {
-    console.error('USAGE: ssb-repl [--limit n] table-id');
-    process.exit(1);
-}
 
 const HEADERS = {
     'User-Agent': 'ssb-repl',
@@ -43,6 +59,11 @@ debug(apiUrl)
 fetch(apiUrl, {headers: HEADERS})
     .then(jsonify.bind(null, 'GET'))
     .then(metadata => {
+        if (argv.metadata) {
+            // just print metadata and exit
+            console.log(metadata)
+        }
+
         if (metadata.variables) {
             // construct a query to fetch everything
             const query = {
