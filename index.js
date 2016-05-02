@@ -1,19 +1,52 @@
 #!/usr/bin/env node
+'use strict';
 
 const jsonStatRepl = require('jsonstat-repl');
 const fetch = require('node-fetch');
-const debug = require('debug')('ssb-repl');
+const fs = require('fs');
 const argv = require('yargs')
-    .number('limit')
-    .string('_')
+    .usage('$0 <table-id> [args]')
+    .option('limit', {
+        alias: 'l',
+        describe: 'Only fetch the first N values of each variable (to reduce size)',
+        type: 'number'
+    })
+    .option('exclude-elimination', {
+        alias: 'ee',
+        describe: 'Ignore variables that can be eliminated (to reduce size)',
+        type: 'boolean'
+    })
+    .option('metadata', {
+        alias: 'm',
+        describe: 'Only print metadata from the given table',
+        type: 'boolean'
+    })
+    .option('query', {
+        alias: 'q',
+        describe: 'Path to file that contains the JSON query you want to execute.',
+        type: 'string'
+    })
+    .option('debug', {
+        alias: 'd',
+        describe: 'Enable debug logging',
+        type: 'boolean'
+    })
+    .string('_').demand(1)
+    .help('help')
     .argv;
 
-const tableId = argv._[0];
-
-if (!tableId) {
-    console.error('USAGE: ssb-repl [--limit n] table-id');
-    process.exit(1);
+const errors = {
+    tooBig: 'The response may be too big. Use [--limit n] to only fetch the n first values of each dimension, or [--exclude-elimination] to exclude all variables that can be eliminated.'
 }
+
+if (argv.debug) {
+    process.env.DEBUG = [process.env.DEBUG, 'ssb-repl'].join(',');
+}
+
+const debug = require('debug')('ssb-repl');
+debug(argv);
+
+const tableId = argv._[0];
 
 const HEADERS = {
     'User-Agent': 'ssb-repl',
@@ -43,17 +76,35 @@ debug(apiUrl)
 fetch(apiUrl, {headers: HEADERS})
     .then(jsonify.bind(null, 'GET'))
     .then(metadata => {
+        if (argv.metadata) {
+            // just print metadata and exit
+            console.log(JSON.stringify(metadata, null, 2))
+            return;
+        }
+
         if (metadata.variables) {
-            // construct a query to fetch everything
-            const query = {
-                query: metadata.variables.map(v => ({
-                    code: v.code,
-                    selection: (argv.limit ? { filter: 'item', values: v.values.slice(0, +argv.limit) } : { filter: 'all', values: ['*'] })
-                })),
-                response: {
-                    format: 'json-stat'
-                }
-            };
+            let variables = metadata.variables;
+
+            if (argv.excludeElimination) {
+                variables = variables.filter(v => !v.elimination)
+            }
+
+            let query;
+
+            if (argv.query) {
+                query = JSON.parse(fs.readFileSync(argv.query, 'utf-8'));
+            } else {
+                query = {
+                    query: variables.map(v => ({
+                        code: v.code,
+                        selection: (argv.limit ? { filter: 'item', values: v.values.slice(0, +argv.limit) } : { filter: 'all', values: ['*'] })
+                    })),
+                    response: {
+                        format: 'json-stat'
+                    }
+                };
+            }
+
 
             const body = JSON.stringify(query, null, 2);
 
@@ -70,7 +121,7 @@ fetch(apiUrl, {headers: HEADERS})
             .catch(err => {
                 if (err.httpCode === 403) {
                     console.error(err.message);
-                    console.error('The response may be too big. Use [--limit n] to only fetch the n first values of each dimension.');
+                    console.error(errors.tooBig);
                 } else {
                     return Promise.reject(err);
                 }
@@ -79,4 +130,4 @@ fetch(apiUrl, {headers: HEADERS})
             console.error('invalid table\n\n', metadata);
         }
     })
-    .catch(console.error);
+    .catch(err => console.error(err.message));
